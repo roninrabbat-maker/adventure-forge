@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { GameState, Character, Message, CharacterCreatorOptions, SaveData, CustomizationArea } from './types';
+import { GameState, Character, Message, CharacterCreatorOptions, SaveData, CustomizationArea, PotentialCompanion } from './types';
 import { generateCreatorScaffold, generateTabOptions, generateGameTurn, generateCanonEvents, generateSimpleCharacter, generateVisualTheme } from './services/geminiService';
 import CharacterCreator from './components/CharacterCreator';
 import GameScreen from './components/GameScreen';
@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const [saveMessage, setSaveMessage] = useState<{ text: string, isError: boolean } | null>(null);
   const [hasInitiatedOptionsFetch, setHasInitiatedOptionsFetch] = useState(false);
   const [previousTurnState, setPreviousTurnState] = useState<TurnState | null>(null);
+  const [potentialCompanions, setPotentialCompanions] = useState<PotentialCompanion[]>([]);
 
   // State for continuing the game in the same world
   const [worldThemeForContinuation, setWorldThemeForContinuation] = useState<string | null>(null);
@@ -241,6 +242,9 @@ const App: React.FC = () => {
       setMessages(prev => [...prev, { speaker: 'game', text: turnResult.sceneDescription }]);
       setChoices(turnResult.choices);
       setAttackOptions(turnResult.attackOptions);
+      if (turnResult.newCharacters && turnResult.newCharacters.length > 0) {
+        setPotentialCompanions(turnResult.newCharacters);
+      }
       
       setGameState(turnResult.isCombat ? GameState.COMBAT : GameState.GAMEPLAY);
       
@@ -276,8 +280,12 @@ const App: React.FC = () => {
         newCharacterState.inventory = updatedInventory;
     }
     
-    // Auto-companion logic removed. Companions are now only added if logic explicitly handles it,
-    // which has been removed from the backend service to prevent duplicates.
+    // Handle potential companions
+    if (turnResult.newCharacters && turnResult.newCharacters.length > 0) {
+        setPotentialCompanions(turnResult.newCharacters);
+    } else {
+        setPotentialCompanions([]);
+    }
 
     setCharacter(newCharacterState);
     setMessages(prev => [...prev, { speaker: 'game', text: turnResult.sceneDescription }]);
@@ -287,6 +295,7 @@ const App: React.FC = () => {
         setChoices([]);
         setAttackOptions([]);
         setPreviousTurnState(null); // Can't undo from a game over state
+        setPotentialCompanions([]);
     } else {
         setChoices(turnResult.choices);
         setAttackOptions(turnResult.attackOptions);
@@ -308,6 +317,8 @@ const App: React.FC = () => {
 
       setIsLoading(true);
       setError(null);
+      // Clear previous companions if the player ignores them
+      setPotentialCompanions([]);
 
       const newMessages: Message[] = [...messages, { speaker: 'player', text: choice }];
       setMessages(newMessages);
@@ -327,6 +338,28 @@ const App: React.FC = () => {
   const handleCharacterUpdate = useCallback((updatedCharacter: Character) => {
     setCharacter(updatedCharacter);
   }, []);
+
+  const handleAddCompanion = useCallback((companion: PotentialCompanion) => {
+    if (!character) return;
+
+    const newCompanion = {
+        id: `${Date.now()}-${companion.name.replace(/\s/g, '')}`,
+        name: companion.name,
+        kind: companion.kind,
+        backstory: `Met during the adventure. ${companion.description}`,
+        relationship: 'Just met.',
+    };
+
+    const updatedCompanions = [...(character.companions || []), newCompanion];
+    const updatedCharacter = { ...character, companions: updatedCompanions };
+    
+    setCharacter(updatedCharacter);
+    // Remove from potential list
+    setPotentialCompanions(prev => prev.filter(c => c.name !== companion.name));
+    
+    // Optional: Add a system message confirming addition
+    setMessages(prev => [...prev, { speaker: 'system', text: `${companion.name} joined your party.` }]);
+  }, [character]);
 
   const handleSaveGame = useCallback(() => {
     if (!character) return;
@@ -383,6 +416,7 @@ const App: React.FC = () => {
       setPreviousTurnState(null);
       setHasInitiatedOptionsFetch(false);
       setIsSwitchingPerspective(false); // Close modal
+      setPotentialCompanions([]);
     } else {
       setError("Could not find the selected save file.");
     }
@@ -419,6 +453,7 @@ const App: React.FC = () => {
     setHasInitiatedOptionsFetch(false); // Reset for the next character
     setPreviousTurnState(null);
     setIsSwitchingPerspective(false);
+    setPotentialCompanions([]);
   };
 
   const handleContinueAsNewCharacter = useCallback(() => {
@@ -441,6 +476,7 @@ const App: React.FC = () => {
     setHasInitiatedOptionsFetch(false); // Reset for the new hero
     setPreviousTurnState(null);
     setIsSwitchingPerspective(false);
+    setPotentialCompanions([]);
   }, [character, messages]);
 
   // Updated to just open the modal and save
@@ -478,6 +514,7 @@ const App: React.FC = () => {
           setHasInitiatedOptionsFetch(false);
           setPreviousTurnState(null);
           setIsSwitchingPerspective(false);
+          setPotentialCompanions([]);
       } else {
           // Load existing character with injected context
           handleLoadGame(target, [contextMessage]);
@@ -518,6 +555,7 @@ const App: React.FC = () => {
         setAttackOptions(previousTurnState.attackOptions);
         setPreviousTurnState(null); // Can only undo once
         setError(null);
+        setPotentialCompanions([]);
     }
   }, [previousTurnState]);
 
@@ -562,6 +600,8 @@ const App: React.FC = () => {
                     onCharacterUpdate={handleCharacterUpdate}
                     onUndo={handleUndo}
                     canUndo={!!previousTurnState && !isLoading}
+                    potentialCompanions={potentialCompanions}
+                    onAddCompanion={handleAddCompanion}
                 />
             );
         default:

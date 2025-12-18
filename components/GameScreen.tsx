@@ -1,6 +1,5 @@
-
 import React, { useRef, useEffect, useState } from 'react';
-import { Character, GameState, Message } from '../types';
+import { Character, GameState, Message, PotentialCompanion } from '../types';
 import CharacterSheet from './CharacterSheet';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -21,6 +20,8 @@ interface GameScreenProps {
   onCharacterUpdate: (character: Character) => void;
   onUndo: () => void;
   canUndo: boolean;
+  potentialCompanions?: PotentialCompanion[];
+  onAddCompanion?: (companion: PotentialCompanion) => void;
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
@@ -40,6 +41,8 @@ const GameScreen: React.FC<GameScreenProps> = ({
   onCharacterUpdate,
   onUndo,
   canUndo,
+  potentialCompanions = [],
+  onAddCompanion,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [customAction, setCustomAction] = useState('');
@@ -77,11 +80,10 @@ const GameScreen: React.FC<GameScreenProps> = ({
     }
   };
 
-  // Helper to get font class
   const getFontClass = (fontType?: string) => {
       if (fontType === 'serif') return 'font-serif';
       if (fontType === 'mono') return 'font-mono';
-      return ''; // Default sans
+      return ''; 
   };
 
   const themeStyle = character?.visualTheme ? {
@@ -134,9 +136,38 @@ const GameScreen: React.FC<GameScreenProps> = ({
     );
   };
 
+  const renderCompanions = () => {
+      if (potentialCompanions.length === 0 || !onAddCompanion) return null;
+
+      return (
+          <div className="mb-6 bg-black/40 border border-[var(--accent)] p-4 rounded-lg shadow-lg animate-fade-in">
+              <h4 className="text-sm uppercase font-bold text-[var(--accent)] mb-2 tracking-wider">New Encounter</h4>
+              <div className="grid grid-cols-1 gap-3">
+                  {potentialCompanions.map((npc, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] border border-[var(--border)] p-3 rounded">
+                          <div>
+                              <p className="font-bold text-[var(--text-main)]">{npc.name}</p>
+                              <p className="text-xs text-[var(--text-main)] opacity-70 italic">{npc.kind} - {npc.description}</p>
+                          </div>
+                          <button 
+                            onClick={() => onAddCompanion(npc)}
+                            className="ml-4 bg-[var(--accent)] text-slate-900 text-xs font-bold py-2 px-3 rounded hover:opacity-80 transition flex items-center gap-1"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
+                            </svg>
+                            Add Companion
+                          </button>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      );
+  };
+
   const renderPlayerInput = () => {
     const hasChoices = (gameState === GameState.COMBAT ? attackOptions : choices).length > 0;
-    const inputClass = "w-full bg-[var(--bg-main)]/50 border border-[var(--border)] rounded-lg py-3 px-4 text-[var(--text-main)] placeholder-[var(--text-main)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition disabled:opacity-50";
+    const inputClass = "w-full bg-black/40 border border-[var(--border)] rounded-lg py-3 px-4 text-[var(--text-main)] placeholder-[var(--text-main)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition disabled:opacity-50";
 
     return (
       <div className="mt-4">
@@ -185,38 +216,38 @@ const GameScreen: React.FC<GameScreenProps> = ({
   }
 
   if (!character) {
-      return <div className="min-h-screen flex items-center justify-center bg-slate-900"><LoadingSpinner text="Loading Character..." /></div>
+      return <div className="min-h-screen flex items-center justify-center bg-[#121212]"><LoadingSpinner text="Loading Character..." /></div>
   }
 
-  // Fallback defaults if theme is missing (should not happen with new characters)
   const containerStyle = character.visualTheme ? themeStyle : {
-      '--bg-main': '#0f172a',
+      '--bg-main': '#121212',
       '--text-main': '#e2e8f0',
-      '--accent': '#22d3ee',
-      '--button': '#4f46e5',
-      '--border': '#334155',
+      '--accent': '#fbbf24',
+      '--button': '#14532d',
+      '--border': '#ca8a04',
   } as React.CSSProperties;
 
   return (
     <div 
-        className={`min-h-screen bg-[var(--bg-main)] bg-cover bg-fixed p-4 sm:p-6 lg:p-8 ${getFontClass(character.visualTheme?.font)}`} 
-        style={{...containerStyle, backgroundImage: "url('https://picsum.photos/1920/1080?blur=10&grayscale')"}}
+        className={`h-screen flex flex-col bg-[#121212] overflow-hidden ${getFontClass(character.visualTheme?.font)}`} 
+        style={containerStyle}
     >
-        <div className="absolute inset-0 bg-[var(--bg-main)]/80"></div>
-        <div className="relative max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 text-[var(--text-main)]">
-            <div className="lg:col-span-1 lg:sticky top-8 self-start">
+        <div className="relative z-10 flex-grow overflow-hidden flex flex-col lg:flex-row max-w-7xl mx-auto w-full p-4 gap-4">
+            
+            <div className="lg:w-1/3 w-full lg:h-full overflow-y-auto custom-scrollbar flex-shrink-0">
                 <CharacterSheet character={character} onCharacterUpdate={onCharacterUpdate} />
             </div>
 
-            <main className="lg:col-span-2 bg-[var(--bg-main)]/60 backdrop-blur-sm border border-[var(--border)] rounded-lg shadow-2xl p-6 min-h-[80vh] flex flex-col">
-                <div className="flex justify-end items-center mb-4 relative flex-wrap gap-2">
-                  {saveMessage && <span className={`${saveMessage.isError ? 'text-red-400' : 'text-green-400'} mr-4 transition-opacity duration-500 absolute left-0 font-semibold`}>{saveMessage.text}</span>}
+            <main className="flex-grow flex flex-col lg:h-full w-full bg-black/20 backdrop-blur-sm border border-[var(--border)] rounded-lg shadow-2xl overflow-hidden">
+                
+                <div className="flex-shrink-0 p-4 border-b border-[var(--border)] flex justify-end items-center relative flex-wrap gap-2">
+                  {saveMessage && <span className={`${saveMessage.isError ? 'text-red-400' : 'text-green-400'} mr-4 transition-opacity duration-500 absolute left-4 font-semibold`}>{saveMessage.text}</span>}
                   {gameState !== GameState.GAME_OVER && (
                     <div className="flex items-center gap-2">
                        <button
                         onClick={onSwitchPerspective}
                         disabled={isLoading}
-                        className="bg-[var(--accent)] hover:opacity-90 text-slate-900 font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        className="bg-[var(--accent)] hover:opacity-90 text-slate-900 font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                         title="Play as another character in this world"
                       >
                         Switch Perspective
@@ -224,22 +255,23 @@ const GameScreen: React.FC<GameScreenProps> = ({
                       <button
                         onClick={onUndo}
                         disabled={!canUndo || isLoading}
-                        className="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                       >
                         Undo
                       </button>
-                      <button onClick={onSaveGame} disabled={isLoading} className="bg-[var(--button)] hover:opacity-90 text-[var(--text-main)] font-bold py-2 px-4 rounded transition disabled:opacity-50">
-                        Save Game
+                      <button onClick={onSaveGame} disabled={isLoading} className="bg-[var(--button)] hover:opacity-90 text-[var(--text-main)] font-bold py-2 px-4 rounded transition disabled:opacity-50 text-xs sm:text-sm">
+                        Save
                       </button>
                     </div>
                   )}
                 </div>
-                <div className="flex-grow overflow-y-auto pr-4 mb-4">
+
+                <div className="flex-grow overflow-y-auto p-6 custom-scrollbar scroll-smooth">
                     {messages.map(renderMessage)}
                     <div ref={messagesEndRef} />
                 </div>
                 
-                <div className="mt-auto pt-4 border-t border-[var(--border)]">
+                <div className="flex-shrink-0 p-4 border-t border-[var(--border)] bg-black/40">
                   {isLoading && (
                       <div className="text-center p-6">
                           <LoadingSpinner text="The world shifts and changes..." />
@@ -248,6 +280,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
                   {!isLoading && gameState !== GameState.GAME_OVER && (
                       <>
+                        {renderCompanions()}
                         {renderChoices()}
                         {renderPlayerInput()}
                       </>

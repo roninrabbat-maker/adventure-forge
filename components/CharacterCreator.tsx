@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { GameState, CharacterCreatorOptions, Character, CustomizationArea, SaveData, Companion, CompanionSuggestion } from '../types';
+import { GameState, CharacterCreatorOptions, Character, CustomizationArea, SaveData, Companion, CompanionSuggestion, Customization } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 interface MultiSelectModalProps {
@@ -28,30 +28,29 @@ const MultiSelectModal: React.FC<MultiSelectModalProps> = ({ area, selections, o
 
   const allVisibleOptions = [...new Set([...filteredOptions, ...selections])];
 
-
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="p-4 border-b border-slate-600">
-          <h3 className="text-xl font-bold text-cyan-300 capitalize">{area.areaName.replace(/_/g, ' ')}</h3>
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#1a1a1a] border border-slate-700 rounded-lg shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-slate-700">
+          <h3 className="text-xl font-bold text-amber-400 capitalize font-serif">{area.areaName.replace(/_/g, ' ')}</h3>
           <input
             type="text"
             placeholder="Search options..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 mt-2 text-white focus:ring-cyan-500 focus:border-cyan-500"
+            className="w-full bg-[#121212] border border-slate-800 rounded-md p-2 mt-2 text-white focus:ring-amber-500 focus:border-amber-500"
           />
         </div>
-        <div className="overflow-y-auto p-4 flex-grow">
+        <div className="overflow-y-auto p-4 flex-grow custom-scrollbar">
           <ul className="space-y-2">
             {allVisibleOptions.sort().map(option => (
               <li key={option}>
-                <label className="flex items-center space-x-3 p-2 rounded-md hover:bg-slate-700 cursor-pointer transition-colors">
+                <label className="flex items-center space-x-3 p-2 rounded-md hover:bg-slate-800 cursor-pointer transition-colors">
                   <input
                     type="checkbox"
                     checked={selections.includes(option)}
                     onChange={() => onSelectionChange(area.areaName, option)}
-                    className="h-5 w-5 rounded bg-slate-700 border-slate-500 text-cyan-500 focus:ring-cyan-600"
+                    className="h-5 w-5 rounded bg-slate-700 border-slate-600 text-amber-500 focus:ring-amber-600"
                   />
                   <span className="text-slate-300">{option}</span>
                 </label>
@@ -59,22 +58,22 @@ const MultiSelectModal: React.FC<MultiSelectModalProps> = ({ area, selections, o
             ))}
           </ul>
         </div>
-         <div className="p-4 border-t border-slate-600">
+         <div className="p-4 border-t border-slate-700">
           <form onSubmit={handleAddCustom} className="flex gap-2">
             <input
               type="text"
               placeholder="Add a custom option..."
               value={customOption}
               onChange={e => setCustomOption(e.target.value)}
-              className="flex-grow bg-slate-900 border border-slate-700 rounded-md p-2 text-white focus:ring-cyan-500 focus:border-cyan-500"
+              className="flex-grow bg-[#121212] border border-slate-800 rounded-md p-2 text-white focus:ring-amber-500 focus:border-amber-500"
             />
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-md transition">
+            <button type="submit" className="bg-green-800 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition">
               Add
             </button>
           </form>
         </div>
-        <div className="p-4 border-t border-slate-600 text-right">
-          <button onClick={onClose} className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-2 px-6 rounded-md transition">
+        <div className="p-4 border-t border-slate-700 text-right">
+          <button onClick={onClose} className="bg-amber-600 hover:bg-amber-500 text-slate-900 font-bold py-2 px-6 rounded-md transition">
             Done
           </button>
         </div>
@@ -123,15 +122,12 @@ const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [loadingTabs, setLoadingTabs] = useState<Set<number>>(new Set());
   const [companions, setCompanions] = useState<Companion[]>([]);
 
-
   useEffect(() => {
-    // This effect now correctly handles progressively loaded options.
     if (creatorOptions) {
       const newSelections = { ...selections };
       let updated = false;
       creatorOptions.customizationTabs.forEach(tab => {
         tab.areas.forEach(area => {
-          // If options are now available but we haven't set a default, set one.
           if (area.options.length > 0 && !newSelections[area.areaName]) {
             newSelections[area.areaName] = [area.options[0]];
             updated = true;
@@ -139,350 +135,272 @@ const CharacterCreator: React.FC<CharacterCreatorProps> = ({
         });
       });
 
-      if (updated) {
-        setSelections(newSelections);
-      }
-      
+      if (updated) setSelections(newSelections);
       if (!backstory) setBackstory(creatorOptions.backstory);
       if (!alignment && creatorOptions.alignments.length > 0) {
         setAlignment(creatorOptions.alignments[0]);
       }
-      // Populate companions from suggestions, but only on first load of creatorOptions
       if (creatorOptions.startingCompanions && companions.length === 0) {
           const initialCompanions = creatorOptions.startingCompanions.map((sugg: CompanionSuggestion) => ({
               id: `${Date.now()}-${sugg.name.replace(/\s/g, '')}`,
               name: sugg.name,
               kind: sugg.kind,
-              backstory: '', // User will fill this
-              relationship: '' // and this
+              backstory: 'A trusted ally found in the starting chapter of your journey.', 
+              relationship: 'A budding alliance.' 
           }));
           setCompanions(initialCompanions);
       }
     }
-  }, [creatorOptions, selections, backstory, alignment, companions.length]);
-
-  const handleTabClick = async (index: number) => {
-    setActiveTab(index);
-    if (!creatorOptions) return;
-
-    const tabData = creatorOptions.customizationTabs[index];
-    // If the first area has no options, we need to load this tab's data.
-    if (tabData && tabData.areas.length > 0 && tabData.areas[0].options.length === 0) {
-      setLoadingTabs(prev => new Set(prev).add(index));
-      try {
-        await onFetchTabOptions(index);
-      } catch(e) {
-        // Optionally handle tab-specific errors
-        console.error(e);
-      } finally {
-        setLoadingTabs(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(index);
-          return newSet;
-        });
-      }
-    }
-  };
-
-  const handleSubmit = (creationMode: 'detailed' | 'simple') => {
-    if (name.trim()) {
-      onNameSubmit(name.trim(), creationMode, world.trim() || undefined, customBackstory.trim() || undefined, worldDetails.trim() || undefined);
-    }
-  };
-  
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSubmit('detailed');
-  };
+  }, [creatorOptions]);
 
   const handleSelectionChange = (areaName: string, option: string) => {
     setSelections(prev => {
-        const currentSelections = prev[areaName] || [];
-        const newSelections = currentSelections.includes(option)
-            ? currentSelections.filter(item => item !== option)
-            : [...currentSelections, option];
-        return { ...prev, [areaName]: newSelections };
+      const currentSelections = prev[areaName] || [];
+      if (currentSelections.includes(option)) {
+        return { ...prev, [areaName]: currentSelections.filter(o => o !== option) };
+      } else {
+        return { ...prev, [areaName]: [...currentSelections, option] };
+      }
     });
   };
 
   const handleFinalize = () => {
     if (!creatorOptions) return;
-    
-    const isFromKnownWorld = !!world.trim();
 
-    // Fix: Using Object.keys().map() to avoid type inference issues with Object.entries().
-    const customizationsArray = Object.keys(selections).map((area) => ({
+    // Explicitly mapping selections to the Customization[] type to resolve TS error
+    const flattenedCustoms: Customization[] = Object.entries(selections).map(([area, selection]) => ({
       area,
-      selection: selections[area],
+      selection: selection as string[]
     }));
 
     const finalCharacter: Omit<Character, 'id'> = {
       name,
       theme: creatorOptions.theme,
       description: creatorOptions.description,
-      backstory: backstory,
-      alignment: alignment,
+      alignment,
+      backstory,
       health: creatorOptions.startingHealth,
       maxHealth: creatorOptions.startingHealth,
-      customizations: customizationsArray,
+      customizations: flattenedCustoms,
       inventory: creatorOptions.startingInventory,
-      companions: companions.filter(c => c.name.trim() !== '' && c.kind.trim() !== ''), // Filter out empty companions
-      isFromKnownWorld: isFromKnownWorld,
+      companions: companions,
     };
-    onCharacterFinalize(finalCharacter, isFromKnownWorld);
-  };
-  
-  const handleAddCompanion = () => {
-    const newCompanion: Companion = {
-      id: `${Date.now()}-new`,
-      name: '',
-      kind: '',
-      backstory: '',
-      relationship: ''
-    };
-    setCompanions([...companions, newCompanion]);
+
+    onCharacterFinalize(finalCharacter, false);
   };
 
-  const handleCompanionChange = (id: string, field: keyof Omit<Companion, 'id'>, value: string) => {
-      setCompanions(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
-  };
-
-  const handleRemoveCompanion = (id: string) => {
-      setCompanions(prev => prev.filter(c => c.id !== id));
-  };
-
-
-  const renderNameInput = () => (
-    <div className="w-full max-w-3xl mx-auto text-center">
-      <h1 className="text-5xl font-serif font-bold text-white mb-2">Gemini Adventure Forge</h1>
-        {continuedWorldTheme ? (
-            <p className="text-slate-300 mb-8">The previous hero has fallen. A new adventurer is needed in the world of <span className="font-bold text-cyan-400">{continuedWorldTheme}</span>.</p>
-        ) : (
-             <p className="text-slate-300 mb-8">Forge a new destiny or continue an existing tale.</p>
-        )}
-
-      {savedGames.length > 0 && !continuedWorldTheme && (
-          <div className="mb-10 animate-fade-in">
-              <h2 className="text-2xl font-serif text-slate-300 mb-4">Continue an Adventure</h2>
-              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 max-h-64 overflow-y-auto space-y-3 text-left">
-                  {savedGames.sort((a, b) => new Date(b.lastSaved).getTime() - new Date(a.lastSaved).getTime()).map(save => (
-                      <div key={save.id} className="flex items-center justify-between bg-slate-900 p-3 rounded-md">
-                          <div>
-                              <p className="font-bold text-lg text-cyan-400">{save.character.name}</p>
-                              <p className="text-sm text-slate-400 italic">{save.character.theme}</p>
-                              <p className="text-xs text-slate-500 mt-1">Last saved: {new Date(save.lastSaved).toLocaleString()}</p>
-                          </div>
-                          <div className="flex shrink-0 gap-2">
-                              <button onClick={() => onLoadGame(save.id)} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded transition">Load</button>
-                              <button onClick={() => onDeleteGame(save.id)} className="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition">Delete</button>
-                          </div>
-                      </div>
-                  ))}
-              </div>
+  if (gameState === GameState.CHARACTER_CREATION_START) {
+    return (
+      <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center p-6 text-slate-200">
+        <div className="max-w-4xl w-full space-y-12">
+          <div className="text-center">
+            <h1 className="text-6xl font-serif font-bold text-amber-500 mb-4 drop-shadow-md">Adventure Forge</h1>
+            <p className="text-xl text-slate-400 font-light tracking-wide italic">"Your name is the first seed of reality."</p>
           </div>
-      )}
 
-      <div className="mt-8">
-            <div className="flex items-center mb-4">
-              <div className="flex-grow border-t border-slate-600"></div>
-              <span className="flex-shrink mx-4 text-slate-400 text-lg font-serif">Or Start a New Adventure</span>
-              <div className="flex-grow border-t border-slate-600"></div>
-            </div>
-            <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
+          <div className="bg-[#1a1a1a] border border-slate-800 rounded-2xl p-8 shadow-2xl">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold uppercase tracking-widest text-slate-500 mb-2">Character Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter a character name... e.g., Davy Jones"
-                  className="w-full bg-slate-800 border-2 border-slate-600 rounded-md py-3 px-4 text-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
-                  required
+                  placeholder="Enter a legendary name..."
+                  className="w-full bg-[#121212] border border-slate-700 rounded-lg py-4 px-6 text-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-amber-500 transition shadow-inner"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                   <label className="block text-sm font-bold uppercase tracking-widest text-slate-500 mb-2">World Theme (Optional)</label>
+                   <input
+                    type="text"
+                    value={world}
+                    onChange={(e) => setWorld(e.target.value)}
+                    placeholder="Witcher, Star Wars, Cyberpunk..."
+                    className="w-full bg-[#121212] border border-slate-700 rounded-lg py-3 px-4 text-white focus:ring-2 focus:ring-amber-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold uppercase tracking-widest text-slate-500 mb-2">World Details (Optional)</label>
+                  <input
+                    type="text"
+                    value={worldDetails}
+                    onChange={(e) => setWorldDetails(e.target.value)}
+                    placeholder="Grim dark, high magic, 19th century..."
+                    className="w-full bg-[#121212] border border-slate-700 rounded-lg py-3 px-4 text-white focus:ring-2 focus:ring-amber-500 transition"
+                  />
+                </div>
+              </div>
+
+               <div>
+                <label className="block text-sm font-bold uppercase tracking-widest text-slate-500 mb-2">Custom Backstory (Optional)</label>
                 <textarea
                   value={customBackstory}
                   onChange={(e) => setCustomBackstory(e.target.value)}
-                  placeholder="Provide a backstory for your character... (Optional)"
-                  rows={3}
-                  className="w-full bg-slate-800 border-2 border-slate-600 rounded-md py-3 px-4 text-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
+                  placeholder="Tell Gemini who you are..."
+                  rows={4}
+                  className="w-full bg-[#121212] border border-slate-700 rounded-lg py-3 px-4 text-white focus:ring-2 focus:ring-amber-500 transition resize-none"
                 />
-                
-                <input
-                  type="text"
-                  value={world}
-                  onChange={(e) => setWorld(e.target.value)}
-                  placeholder="Enter a world... e.g., Star Wars (Optional)"
-                  className="w-full bg-slate-800 border-2 border-slate-600 rounded-md py-3 px-4 text-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition read-only:bg-slate-700 read-only:cursor-not-allowed"
-                  readOnly={!!continuedWorldTheme}
-                />
-                 <textarea
-                  value={worldDetails}
-                  onChange={(e) => setWorldDetails(e.target.value)}
-                  placeholder="World History & Culture (Optional) - Add flavor to your world..."
-                  rows={3}
-                  className="w-full bg-slate-800 border-2 border-slate-600 rounded-md py-3 px-4 text-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400 transition"
-                  readOnly={!!continuedWorldTheme}
-                />
+              </div>
 
-                <div className="flex flex-col sm:flex-row shrink-0 gap-4 justify-center mt-2">
-                  <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 px-8 rounded-md text-lg transition duration-300 transform hover:scale-105">
-                    Detailed Creation
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => handleSubmit('simple')} 
-                    disabled={!name.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-md text-lg transition duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Quick Start (AI)
-                  </button>
-                </div>
-            </form>
-       </div>
-       {error && <p className="text-red-400 mt-4">{error}</p>}
-    </div>
-  );
-  
-  const renderFinalizeScreen = () => {
-    if (!creatorOptions) return null;
-    
-    const currentTabData = creatorOptions.customizationTabs[activeTab];
+              {error && <p className="text-red-400 font-semibold text-center bg-red-900/20 p-3 rounded border border-red-900/50">{error}</p>}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                <button
+                  onClick={() => onNameSubmit(name, 'detailed', world, customBackstory, worldDetails)}
+                  disabled={isLoading || !name.trim()}
+                  className="bg-green-800 hover:bg-green-700 text-white font-bold py-5 px-8 rounded-xl transition duration-300 transform hover:-translate-y-1 disabled:opacity-50 shadow-lg"
+                >
+                  {isLoading ? 'Forging World...' : 'Detailed Creator'}
+                </button>
+                <button
+                  onClick={() => onNameSubmit(name, 'simple', world, customBackstory, worldDetails)}
+                  disabled={isLoading || !name.trim()}
+                  className="bg-amber-600 hover:bg-amber-500 text-slate-900 font-bold py-5 px-8 rounded-xl transition duration-300 transform hover:-translate-y-1 disabled:opacity-50 shadow-lg"
+                >
+                   {isLoading ? 'Summoning Hero...' : 'Quick Start'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {savedGames.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-sm font-bold uppercase tracking-widest text-slate-500">Continue a Tale</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {savedGames.map(save => (
+                  <div key={save.id} className="bg-[#1a1a1a] border border-slate-800 p-4 rounded-xl flex justify-between items-center group hover:border-amber-500 transition">
+                    <div className="cursor-pointer flex-grow" onClick={() => onLoadGame(save.id)}>
+                      <p className="text-lg font-bold text-slate-200 group-hover:text-amber-500">{save.character.name}</p>
+                      <p className="text-xs text-slate-500 italic uppercase">{save.character.theme}</p>
+                    </div>
+                    <button onClick={() => onDeleteGame(save.id)} className="text-slate-600 hover:text-red-400 p-2">
+                       &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState === GameState.CHARACTER_CREATION_FINALIZE) {
+    if (!creatorOptions) return <div className="min-h-screen bg-[#121212] flex items-center justify-center"><LoadingSpinner text="Consulting the Fates..." /></div>;
+
+    const currentTab = creatorOptions.customizationTabs[activeTab];
 
     return (
-      <>
-        {modalArea && (
-          <MultiSelectModal
-            area={modalArea}
-            selections={selections[modalArea.areaName] || []}
-            onClose={() => setModalArea(null)}
-            onSelectionChange={handleSelectionChange}
-          />
-        )}
-        <div className="w-full max-w-6xl mx-auto bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-lg p-8 shadow-2xl animate-fade-in">
-          <div className="text-center mb-8">
-              <h2 className="text-4xl font-serif text-cyan-300">Create Your Character: {name}</h2>
-              <p className="text-slate-400 mt-2">The world of <span className="font-bold text-cyan-400">{creatorOptions.theme}</span> awaits.</p>
-              <p className="text-sm italic mt-1">{creatorOptions.description}</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 mb-8">
-              <div>
-                  <h3 className="text-xl font-serif text-slate-100 mb-2">Your Backstory</h3>
-                  <textarea
-                      value={backstory}
-                      onChange={(e) => setBackstory(e.target.value)}
-                      rows={5}
-                      className="w-full bg-slate-900/70 border border-slate-600 rounded-md p-3 text-slate-300 focus:ring-cyan-500 focus:border-cyan-500 transition"
-                      placeholder="Craft your story..."
-                  />
-              </div>
-              <div>
-                  <h3 className="text-xl font-serif text-slate-100 mb-2">Alignment</h3>
-                  <select
-                      value={alignment}
-                      onChange={(e) => setAlignment(e.target.value)}
-                      className="w-full bg-slate-900/70 border border-slate-600 rounded-md p-3 text-slate-300 focus:ring-cyan-500 focus:border-cyan-500 transition"
-                  >
-                      {creatorOptions.alignments.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-              </div>
-          </div>
+      <div className="min-h-screen bg-[#121212] flex flex-col items-center p-6 text-slate-200 font-serif">
+        <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-8 mt-8">
           
-          <div className="mb-8">
-            <h3 className="text-xl font-serif text-slate-100 mb-4 border-b-2 border-slate-600 pb-2">Companions & Familiars</h3>
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                {companions.map(comp => (
-                    <div key={comp.id} className="bg-slate-900/70 border border-slate-600 rounded-lg p-4 relative animate-fade-in">
-                        <button onClick={() => handleRemoveCompanion(comp.id)} className="absolute top-2 right-2 bg-red-700 hover:bg-red-600 text-white font-bold p-1 rounded-full w-7 h-7 flex items-center justify-center transition">&times;</button>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-300 mb-1">Name</label>
-                                <input type="text" value={comp.name} onChange={(e) => handleCompanionChange(comp.id, 'name', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white focus:ring-cyan-500 focus:border-cyan-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-300 mb-1">Kind/Species</label>
-                                <input type="text" value={comp.kind} onChange={(e) => handleCompanionChange(comp.id, 'kind', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white focus:ring-cyan-500 focus:border-cyan-500" />
-                            </div>
-                            <div className="sm:col-span-2">
-                                <label className="block text-sm font-bold text-slate-300 mb-1">How you met (Backstory)</label>
-                                <textarea value={comp.backstory} onChange={(e) => handleCompanionChange(comp.id, 'backstory', e.target.value)} rows={3} className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white focus:ring-cyan-500 focus:border-cyan-500"></textarea>
-                            </div>
-                            <div className="sm:col-span-2">
-                                <label className="block text-sm font-bold text-slate-300 mb-1">Your Relationship</label>
-                                <textarea value={comp.relationship} onChange={(e) => handleCompanionChange(comp.id, 'relationship', e.target.value)} rows={2} className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white focus:ring-cyan-500 focus:border-cyan-500"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <button onClick={handleAddCompanion} className="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded transition">
-                + Add Companion
-            </button>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-8">
-              {/* Tabs Sidebar */}
-              <div className="flex flex-row md:flex-col md:w-1/4 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0">
-                  {creatorOptions.customizationTabs.map((tab, index) => (
-                      <button 
-                          key={tab.tabName}
-                          onClick={() => handleTabClick(index)}
-                          className={`text-left w-full shrink-0 p-3 rounded-md mb-2 transition-colors duration-200 ${activeTab === index ? 'bg-cyan-500 text-slate-900 font-bold' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
-                      >
-                          {tab.tabName}
-                      </button>
-                  ))}
+          <div className="lg:w-1/3 bg-[#1a1a1a] border border-slate-800 rounded-2xl p-6 shadow-2xl h-fit sticky top-8">
+            <h2 className="text-3xl font-bold text-amber-500 mb-2">{name}</h2>
+            <p className="text-sm text-slate-400 italic mb-4">{creatorOptions.description}</p>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Backstory</label>
+                <textarea 
+                   value={backstory}
+                   onChange={(e) => setBackstory(e.target.value)}
+                   rows={8}
+                   className="w-full bg-[#121212] border border-slate-700 rounded p-3 text-sm italic font-sans leading-relaxed text-slate-300 resize-none"
+                />
               </div>
 
-              {/* Customization Area */}
-              <div className="flex-1">
-                  <h3 className="text-2xl font-serif text-slate-100 mb-4 border-b-2 border-slate-600 pb-2">{currentTabData.tabName}</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 max-h-[40vh] overflow-y-auto pr-3">
-                      {loadingTabs.has(activeTab) ? (
-                        <div className="lg:col-span-2 flex justify-center items-center h-32">
-                          <LoadingSpinner text={`Loading ${currentTabData.tabName}...`} />
-                        </div>
-                      ) : (
-                        currentTabData.areas.map(area => (
-                            <div key={area.areaName}>
-                                <label className="block text-sm font-bold text-slate-300 capitalize mb-1">{area.areaName.replace(/_/g, ' ')}</label>
-                                <button
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Alignment</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {creatorOptions.alignments.map(align => (
+                    <button 
+                      key={align}
+                      onClick={() => setAlignment(align)}
+                      className={`text-xs py-2 px-1 rounded border transition ${alignment === align ? 'bg-amber-600 border-amber-400 text-slate-900 font-bold' : 'bg-black/20 border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                    >
+                      {align}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                onClick={handleFinalize}
+                disabled={isLoading}
+                className="w-full bg-green-800 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:scale-105"
+              >
+                {isLoading ? 'Forging Fate...' : 'Forge Character'}
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:w-2/3 flex flex-col gap-6">
+             <div className="flex flex-wrap gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                {creatorOptions.customizationTabs.map((tab, idx) => (
+                    <button
+                        key={tab.tabName}
+                        onClick={() => setActiveTab(idx)}
+                        className={`px-4 py-2 rounded-t-lg font-bold text-sm uppercase tracking-widest transition-all ${activeTab === idx ? 'bg-amber-600 text-slate-900 scale-105 z-10' : 'bg-[#1a1a1a] text-slate-500 border border-slate-800 hover:text-slate-300'}`}
+                    >
+                        {tab.tabName}
+                    </button>
+                ))}
+             </div>
+
+             <div className="bg-[#1a1a1a] border border-slate-800 rounded-b-2xl rounded-tr-2xl p-8 shadow-2xl flex-grow font-sans">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {currentTab.areas.map((area, idx) => (
+                        <div key={idx} className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <h4 className="text-sm font-bold uppercase tracking-widest text-amber-500/80">{area.areaName.replace(/_/g, ' ')}</h4>
+                                <button 
                                   onClick={() => setModalArea(area)}
-                                  disabled={area.options.length === 0}
-                                  className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-left truncate focus:ring-cyan-500 focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="text-[10px] uppercase font-bold text-slate-500 hover:text-amber-400 transition"
                                 >
-                                  { (selections[area.areaName] || []).length > 0
-                                    ? `${(selections[area.areaName] || []).length} selected`
-                                    : 'Select...'
-                                  }
+                                  Modify List
                                 </button>
                             </div>
-                        ))
-                      )}
+                            
+                            <div className="flex flex-wrap gap-2">
+                                {(selections[area.areaName] || []).map(sel => (
+                                    <span key={sel} className="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-full border border-slate-700">
+                                        {sel}
+                                    </span>
+                                ))}
+                                {(selections[area.areaName] || []).length === 0 && (
+                                    <p className="text-xs text-slate-600 italic">No selections yet.</p>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                {currentTab.areas.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                    <LoadingSpinner text="Loading traits..." />
                   </div>
-              </div>
-          </div>
-
-
-          <div className="text-center mt-10">
-              <button onClick={handleFinalize} className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-12 rounded-lg text-xl transition duration-300 transform hover:scale-105 shadow-lg">
-                  Begin Adventure
-              </button>
+                )}
+             </div>
           </div>
         </div>
-      </>
+        
+        {modalArea && (
+            <MultiSelectModal 
+                area={modalArea} 
+                selections={selections[modalArea.areaName] || []} 
+                onClose={() => setModalArea(null)}
+                onSelectionChange={handleSelectionChange}
+            />
+        )}
+      </div>
     );
-  };
+  }
 
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 bg-cover bg-center" style={{backgroundImage: "url('https://picsum.photos/1920/1000?blur=5&grayscale')"}}>
-        <div className="absolute inset-0 bg-slate-900/70"></div>
-        <div className="relative z-10 w-full">
-            {isLoading && <LoadingSpinner text={gameState === GameState.CHARACTER_CREATION_START ? 'Forging your universe...' : 'Preparing your journey...'} />}
-            {!isLoading && gameState === GameState.CHARACTER_CREATION_START && renderNameInput()}
-            {!isLoading && gameState === GameState.CHARACTER_CREATION_FINALIZE && renderFinalizeScreen()}
-        </div>
-    </div>
-  );
+  return null;
 };
 
 export default CharacterCreator;

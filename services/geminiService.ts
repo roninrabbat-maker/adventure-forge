@@ -195,6 +195,19 @@ const gameTurnSchema = {
       }
     },
     isGameOver: { type: Type.BOOLEAN },
+    newCharacters: {
+        type: Type.ARRAY,
+        description: "List of new, distinct characters introduced in this turn who could be companions. Null if none.",
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                name: { type: Type.STRING },
+                kind: { type: Type.STRING, description: "Species or role (e.g. 'Elven Ranger')"},
+                description: { type: Type.STRING, description: "Brief visual description"}
+            },
+            required: ["name", "kind", "description"]
+        }
+    }
   },
   required: ["sceneDescription", "choices", "isCombat", "attackOptions", "updatedHealth", "isGameOver"]
 };
@@ -224,8 +237,8 @@ const buildBasePrompt = (characterName: string, worldName?: string, backstory?: 
   return promptSegment;
 };
 
+// Use gemini-3-flash-preview for initial scaffold generation
 export const generateCreatorScaffold = async (characterName: string, worldName?: string, backstory?: string, worldDetails?: string): Promise<CharacterCreatorOptions> => {
-  // Reduced number of requested tabs and areas to prevent API timeouts and empty responses.
   const companionInstruction = " Also, suggest 1-2 thematically appropriate companions for the character to have, including a name and a brief description of their 'kind' (e.g., species, appearance).";
   const customizationInstruction = "Provide 8-10 distinct, thematic customization tabs (like 'Physical Traits', 'Attire', 'Core Abilities'). If the character concept implies multiple forms (e.g., Werewolf, Mech Pilot, Disguise Master), YOU MUST generate separate customization tabs for each form (e.g., 'Human Form', 'Wolf Form', 'Mech Chassis', 'Pilot Gear'). CRITICAL: For each of these form-specific tabs, you must include specific appearance-related areas (e.g. 'Fur Color', 'Chassis Plating') so the player can explicitly define how that form looks. For each tab, provide 4-6 specific areas of customization. IMPORTANT: DO NOT generate the list of options for these areas, only the area names.";
   const inventoryInstruction = "For each inventory item, be sure to specify its type as 'weapon', 'armor', or 'item'.";
@@ -235,12 +248,12 @@ export const generateCreatorScaffold = async (characterName: string, worldName?:
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: creatorScaffoldSchema,
-        temperature: 0.7, // Lower temperature slightly for stability
+        temperature: 0.7,
       }
     });
     const text = response.text;
@@ -255,6 +268,7 @@ export const generateCreatorScaffold = async (characterName: string, worldName?:
   }
 };
 
+// Use gemini-3-flash-preview for visual theme generation
 export const generateVisualTheme = async (characterName: string, theme: string, description: string): Promise<VisualTheme> => {
     const prompt = `Generate a UI color theme and font style for a text adventure game.
     Character Name: "${characterName}"
@@ -272,7 +286,7 @@ export const generateVisualTheme = async (characterName: string, theme: string, 
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -285,18 +299,18 @@ export const generateVisualTheme = async (characterName: string, theme: string, 
         return JSON.parse(text.trim()) as VisualTheme;
     } catch (error) {
         console.error("Error generating visual theme:", error);
-        // Fallback default theme
         return {
-            mainBackgroundColor: "#0f172a",
-            textColor: "#e2e8f0",
-            accentColor: "#22d3ee",
-            buttonColor: "#4f46e5",
-            borderColor: "#334155",
-            font: "sans-serif"
+            mainBackgroundColor: "#2b3626",
+            textColor: "#f0fdf4",
+            accentColor: "#fbbf24",
+            buttonColor: "#14532d",
+            borderColor: "#ca8a04",
+            font: "serif"
         };
     }
 };
 
+// Use gemini-3-flash-preview for character generation
 export const generateSimpleCharacter = async (characterName: string, worldName?: string, backstory?: string, worldDetails?: string): Promise<Omit<Character, 'id' | 'isFromKnownWorld'>> => {
     const inventoryInstruction = "For each inventory item, be sure to specify its type as 'weapon', 'armor', or 'item'.";
     const companionInstruction = "If companions are suitable, generate 0-2 fully detailed companions, including how they met the main character and the nature of their bond. Each companion needs a unique ID.";
@@ -307,7 +321,7 @@ export const generateSimpleCharacter = async (characterName: string, worldName?:
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -321,7 +335,6 @@ export const generateSimpleCharacter = async (characterName: string, worldName?:
         }
         const jsonText = text.trim();
         const parsedCharacter = JSON.parse(jsonText);
-        // Ensure the name from the prompt is used, preventing model drift
         parsedCharacter.name = characterName;
         return parsedCharacter;
     } catch (error) {
@@ -330,13 +343,13 @@ export const generateSimpleCharacter = async (characterName: string, worldName?:
     }
 };
 
-
+// Use gemini-3-flash-preview for generating customization options
 export const generateTabOptions = async (theme: string, characterName: string, tabName: string, areaNames: string[]): Promise<CustomizationArea[]> => {
     const prompt = `For a character named "${characterName}" in a "${theme}" world, generate detailed options for the customization tab "${tabName}". The areas to generate for are: ${areaNames.join(', ')}. For each area, provide a rich list of 20-30 creative, thematic options.`;
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -356,11 +369,12 @@ export const generateTabOptions = async (theme: string, characterName: string, t
     }
 }
 
+// Use gemini-3-flash-preview for canon events summary
 export const generateCanonEvents = async (theme: string): Promise<string> => {
     const prompt = `The text adventure game is set in the world of "${theme}". Briefly summarize 3-5 key plot points, character arcs, or "canon events" that are central to the original story of this world. Present this as an intriguing, concise summary for the player. If the theme is not a known fictional universe, state that the character's fate is entirely unwritten.`;
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt,
         });
         return response.text;
@@ -370,7 +384,7 @@ export const generateCanonEvents = async (theme: string): Promise<string> => {
     }
 }
 
-
+// Use gemini-3-pro-preview for complex reasoning and creative storytelling during game turns
 export const generateGameTurn = async (character: Character, history: Message[], playerChoice: string) => {
   const prompt = `
     Character State: ${JSON.stringify(character)}
@@ -387,7 +401,7 @@ export const generateGameTurn = async (character: Character, history: Message[],
     **Story Pacing:** It is crucial to vary the pacing. Not every situation needs to be a life-or-death struggle. Weave in moments of calm, exploration, social interaction with non-hostile characters, and opportunities for reflection. The world should feel alive, not just like a series of combat encounters. For example, if a player decides to "rest at an inn," describe the atmosphere, the other patrons, and offer choices related to conversation or gathering information, rather than defaulting to an ambush. Let the player's choices guide the tone.
 
     - If the character has companions, try to incorporate them into the scene description naturally.
-    - **Companion Rules:** Do NOT generate new companions automatically. The list of companions should only change if the player explicitly recruits someone or dismisses them. If the player does recruit someone, acknowledge it in the text, but the system does not support adding them to the UI list automatically in this turn.
+    - **Companion Rules:** Do NOT generate new companions automatically in the UI. However, if a DISTINCT, NAMED character is introduced in this specific scene who is friendly or neutral and *could* potentially join the party (now or later), list them in the 'newCharacters' field with their name, kind, and visual description. Do not list generic enemies or unnamed crowd members.
     - If the action *inevitably* leads to a fight, set isCombat to true. Avoid forcing combat unnecessarily.
     - **Inventory Rules:** If an item is gained or lost, describe it in inventoryChange, making sure to include its type ('weapon', 'armor', or 'item'). IMPORTANT: Only generate an 'add' action if the player explicitly acquires a NEW copy of an item they did not have, or a new distinct item. Do NOT generate an 'add' action if the player is simply inspecting, holding, or using an item they already possess in their inventory.
     - If the character takes damage or heals, reflect it in updatedHealth.
@@ -397,7 +411,7 @@ export const generateGameTurn = async (character: Character, history: Message[],
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -408,7 +422,6 @@ export const generateGameTurn = async (character: Character, history: Message[],
     });
     const text = response.text;
     if (!text) {
-      // This error will be logged by the catch block below.
       throw new Error("API returned an empty text response.");
     }
     const jsonText = text.trim();

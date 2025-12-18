@@ -84,6 +84,12 @@ export interface CharacterCreatorOptions {
     startingCompanions?: CompanionSuggestion[];
 }
 
+export interface PotentialCompanion {
+    name: string;
+    kind: string;
+    description: string;
+}
+
 export interface GameTurnResult {
   sceneDescription: string;
   choices: string[];
@@ -95,6 +101,7 @@ export interface GameTurnResult {
     item: InventoryItem;
   };
   isGameOver: boolean;
+  newCharacters?: PotentialCompanion[];
 }
 
 export interface SaveData {
